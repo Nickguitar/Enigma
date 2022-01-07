@@ -8,4 +8,5 @@ Work in progress
 - [ ] Plugboard
 - [x] Change rotors order
 - [ ] Change rotors initial index
-- [ ] Enigma CLI
+- [ ] Change ring settings
+- [ ] Enigma CLI (interactive)
