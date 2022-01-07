@@ -1,9 +1,6 @@
 #!/usr/bin/php
 <?php
 
-# Nicholas Ferreira
-# 30/12/2021
-
 # ============== Fixed settings
 //Entry wheel
 $e_wheel = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -74,19 +71,6 @@ $rotors = [
 	["", $rr1, $rr2, $rr3, $rr4, $rr5]
 ];
 
-
-# ================ Variable settings
-//Reflectors set (left to right)
-//$r_set = array_reverse([$rotors[0][1], $rotors[0][2], $rotors[0][3]]);
-
-//Starting positions of each rotor (left to right)
-$starting_positions = "AAA";
-
-//Max 13 pairs
-$plugboard = ["AB", "GE", "PL", "JL", "HW", "MR", "", "", "", "", "", "", ""];
-
-//$reflector = [$rfB];
-
 # ================ Functions
 
 //Remove non-alphabetic characters
@@ -104,14 +88,12 @@ function rotate($rotor_number,$n){
 	$r = [$rotors[0][$rotor_number], $rotors[1][$rotor_number]];
 	$ret = [];
 	foreach($r as $rot)
-		array_push($ret, rotate2($rot,$n));	//abcd => bcda
+		array_push($ret, rotate_aux($rot,$n));	//abcd => bcda
 	return $ret;
 }
-
-function rotate2($str, $n){
+function rotate_aux($str, $n){
 	return substr($str,$n,strlen($str)).substr($str,0,$n);
 }
-
 
 /*
 Pass the char through the specified rotor
@@ -123,6 +105,46 @@ entry wheel and swap it to the rotor
 function pass_to_rotor($char, $rotor){
 	global $e_wheel;
 	return $char == " " ? " " : $rotor[strpos($e_wheel, $char)];
+}
+
+/*
+Simple substitution based on plugboard connections
+If plugboard=['AB', 'RF'],
+A will be replaced with B in the string and vice-versa,
+R will be replaced with F and vice-versa, etc.
+*/
+function plugboard($string, $plugboard){
+	$plugboard = explode(" ", $plugboard);
+	parse_plugboard($plugboard);
+	foreach($plugboard as $p){
+		if($p == "") continue;
+
+		$string = str_replace($p[0], "!", $string);
+		$string = str_replace($p[1], $p[0], $string);
+		$string = str_replace("!", $p[1], $string);
+
+	}
+	return $string;
+}
+
+
+//Makes sure the plugboard configs are ok
+function parse_plugboard($plugboard){
+	if(count($plugboard) > 13)
+		die("[-] Maximum plugboard connections is 13.");
+	foreach($plugboard as $p){
+		if(strlen($p) !== 2 && strlen($p) !== 0)
+			die("[-] Invalid plugboard connections.\nEach connection must be a pair of letters separated by a space");
+		$p0 = $p[0];
+		$p1 = $p[1];
+
+		$counter = 0;
+		foreach($plugboard as $q)
+			if(preg_match("/$p0/", $q) || preg_match("/$p1/", $q))
+				$counter++;
+		if($counter > 1)
+			die("[-] Inconsistent plugboard connections.\nA letter cannot connect to more than one letter.");
+	}
 }
 
 function full_rotate($str, $rotor_list, $reflector){
@@ -154,10 +176,12 @@ function full_rotate($str, $rotor_list, $reflector){
 	$midCount = 0;
 	$leftCount = 0;
 
+	$ret ="";
+
 	for($i=0;$i<strlen($str);$i++){
-		$rightRNumber = array_search(rotate2($rightR,(-$i % 26)), $rotors[0]);
-		$midRNumber = array_search(rotate2($midR,(-$midCount % 26)), $rotors[0]);
-		$leftRNumber = array_search(rotate2($leftR,(-$leftCount % 26)), $rotors[0]);
+		$rightRNumber = array_search(rotate_aux($rightR,(-$i % 26)), $rotors[0]);
+		$midRNumber = array_search(rotate_aux($midR,(-$midCount % 26)), $rotors[0]);
+		$leftRNumber = array_search(rotate_aux($leftR,(-$leftCount % 26)), $rotors[0]);
 
 		if($rightR[0] == $rightNotch){
 			if($midR[0] == $midNotch){
@@ -234,31 +258,33 @@ function full_rotate($str, $rotor_list, $reflector){
 //		echo $char."->";
 		$char = pass_to_rotor($char, $rightRR);
 		$char = $e_wheel[(array_search($char,str_split($e_wheel)) - ($i+1))%26];
-		echo $char;
-/*
-		foreach($full_rotate_arr as $r){
-			echo $char."->";
-			$char = pass_to_rotor($char, $r);
-		}*/
+		$ret .= $char;
 
-		//print_r("\n".$rightR."\n");
-	//	echo "\n";
-
-//		echo print_r($rightR)."\n";
-	if($str[$i] == " "){
-		echo " ";
-		continue;
+		if($str[$i] == " "){
+			echo " ";
+			continue;
+		}
 	}
-	}
+	return $ret;
+}
 
-//		echo all_rotors($str[$i], $r_set)."\n";
+function enigma($string, $rotors, $reflector, $plugboard){
+	$rotors = str_split($rotors);
+	$string = plugboard($string, $plugboard);
+	$string = full_rotate($string, $rotors, $reflector);
+	$string = plugboard($string, $plugboard);
+	return $string;
 }
 
 # ================
 
+//TODO: Starting positions of each rotor (left to right)
+$starting_positions = "AAA";
+
+//Max 13 pairs
+$plugboard = "ML SU KJ NH YT GB VF RE DC";
+
 //$string = parse("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 $string = parse($argv[1]);
 
-echo full_rotate($string, [1,2,3], $rfB);
-
-
+echo enigma($string, 321, $rfB, $plugboard);
