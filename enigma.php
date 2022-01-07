@@ -104,9 +104,14 @@ function rotate($rotor_number,$n){
 	$r = [$rotors[0][$rotor_number], $rotors[1][$rotor_number]];
 	$ret = [];
 	foreach($r as $rot)
-		array_push($ret, substr($rot,$n,strlen($rot)).substr($rot,0,$n));	//abcd => bcda
+		array_push($ret, rotate2($rot,$n));	//abcd => bcda
 	return $ret;
 }
+
+function rotate2($str, $n){
+	return substr($str,$n,strlen($str)).substr($str,0,$n);
+}
+
 
 /*
 Pass the char through the specified rotor
@@ -148,16 +153,21 @@ function full_rotate($str, $rotor_list, $reflector){
 	*/
 	$midCount = 0;
 	$leftCount = 0;
+
 	for($i=0;$i<strlen($str);$i++){
+		$rightRNumber = array_search(rotate2($rightR,(-$i % 26)), $rotors[0]);
+		$midRNumber = array_search(rotate2($midR,(-$midCount % 26)), $rotors[0]);
+		$leftRNumber = array_search(rotate2($leftR,(-$leftCount % 26)), $rotors[0]);
+
 		if($rightR[0] == $rightNotch){
 			if($midR[0] == $midNotch){
 				$leftCount++;
-				$leftR = rotate(3, $leftCount); //change number
+				$leftR = rotate($leftRNumber, $leftCount); //change number
 				echo "left rotor rotated\n";
 			}
 			$midCount++;
 //			$midCount = ($midCount == 27) ? 1 : $midCount;
-			$rotatedM = rotate(2,$midCount); //change number
+			$rotatedM = rotate($midRNumber,$midCount); //change number
 			$midR = $rotatedM[0];
 			$midRR = $rotatedM[1];
 	//		echo "mid rotor rotated\n";
@@ -169,12 +179,24 @@ function full_rotate($str, $rotor_list, $reflector){
 //		echo "L: ".$leftR."\n";
 
 //		echo $rightR."\n";
-		$rotatedR = rotate(1,$i+1); //change number
+//		$rightRNumber = 
+
+
+//		echo $rightRNumber." ".$midRNumber." ".$leftRNumber;
+
+//		echo "\n";
+
+		$rotatedR = rotate($rightRNumber,$i+1); //change number
 		$rightR = $rotatedR[0];
 		$rightRR = $rotatedR[1];
 
+//		print_r($midR);
+
+
 		$r = [$leftR, $midR, $rightR];
 		$rr = [$leftRR, $midRR, $rightRR];
+
+//		print_r($r);
 
 //		echo"r: ".print_r($r);
 //		echo":rr: ".print_r($rr);
@@ -223,6 +245,10 @@ function full_rotate($str, $rotor_list, $reflector){
 	//	echo "\n";
 
 //		echo print_r($rightR)."\n";
+	if($str[$i] == " "){
+		echo " ";
+		continue;
+	}
 	}
 
 //		echo all_rotors($str[$i], $r_set)."\n";
@@ -233,4 +259,6 @@ function full_rotate($str, $rotor_list, $reflector){
 //$string = parse("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 $string = parse($argv[1]);
 
-echo full_rotate($string, [3,2,1], $rfB);
+echo full_rotate($string, [1,2,3], $rfB);
+
+
