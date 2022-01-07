@@ -5,7 +5,7 @@ Work in progress
 
 
 ## TODO
-- Plugboard
-- Change rotors order
-- Change rotors initial index
-- Enigma CLI
+- [ ] Plugboard
+- [x] Change rotors order
+- [ ] Change rotors initial index
+- [ ] Enigma CLI
