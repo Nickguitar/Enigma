@@ -5,7 +5,7 @@ Work in progress
 
 
 ## TODO
-- [ ] Plugboard
+- [x] Plugboard
 - [x] Change rotors order
 - [ ] Change rotors initial index
 - [ ] Change ring settings
