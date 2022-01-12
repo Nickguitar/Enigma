@@ -76,7 +76,7 @@ $rotors = [
 //Remove non-alphabetic characters
 function parse($str){
 	$str = strtoupper($str);
-	$str = preg_replace("/[^A-Z ]/", "", $str);
+	$str = preg_replace("/[^A-Z\t+]/", "", $str);
 	return $str;
 }
 
@@ -88,9 +88,10 @@ function rotate($rotor_number,$n){
 	$r = [$rotors[0][$rotor_number], $rotors[1][$rotor_number]];
 	$ret = [];
 	foreach($r as $rot)
-		array_push($ret, rotate_aux($rot,$n));	//abcd => bcda
+		array_push($ret, rotate_aux($rot,$n));
 	return $ret;
 }
+//abcdef => bcdefa
 function rotate_aux($str, $n){
 	return substr($str,$n,strlen($str)).substr($str,0,$n);
 }
@@ -132,6 +133,8 @@ function plugboard($string, $plugboard){
 function parse_plugboard($plugboard){
 	if(count($plugboard) > 13)
 		die("[-] Maximum plugboard connections is 13.");
+	if(count($plugboard) == 1)
+		return;
 	foreach($plugboard as $p){
 		if(strlen($p) !== 2 && strlen($p) !== 0)
 			die("[-] Invalid plugboard connections.\nEach connection must be a pair of letters separated by a space");
@@ -148,19 +151,19 @@ function parse_plugboard($plugboard){
 }
 
 function full_rotate($str, $rotor_list, $reflector){
-	global $notch,$rotors,$e_wheel;
+	global $notch,$rotors,$e_wheel,$verbose;
+
 	//Left, mid and right rotors
-
-//	print_r($rotors);
-
 	$leftR = $rotors[0][$rotor_list[0]];
 	$midR = $rotors[0][$rotor_list[1]];
 	$rightR = $rotors[0][$rotor_list[2]];
 
+	//Left, mid and right rotors (reversed)
 	$leftRR = $rotors[1][$rotor_list[0]];
 	$midRR = $rotors[1][$rotor_list[1]];
 	$rightRR = $rotors[1][$rotor_list[2]];
 
+	//Notches
 	$rightNotch = $rightR[array_search($notch[$rightR], str_split($e_wheel))];
 	$midNotch = $midR[array_search($notch[$midR], str_split($e_wheel))];
 
@@ -177,97 +180,107 @@ function full_rotate($str, $rotor_list, $reflector){
 	$leftCount = 0;
 
 	$ret ="";
+	$leftRotated = false;
 
 	for($i=0;$i<strlen($str);$i++){
+
+		//Current char
+		$char = $str[$i];
+
 		$rightRNumber = array_search(rotate_aux($rightR,(-$i % 26)), $rotors[0]);
 		$midRNumber = array_search(rotate_aux($midR,(-$midCount % 26)), $rotors[0]);
 		$leftRNumber = array_search(rotate_aux($leftR,(-$leftCount % 26)), $rotors[0]);
 
-		if($rightR[0] == $rightNotch){
-			if($midR[0] == $midNotch){
-				$leftCount++;
-				$leftR = rotate($leftRNumber, $leftCount); //change number
-				echo "left rotor rotated\n";
-			}
-			$midCount++;
-//			$midCount = ($midCount == 27) ? 1 : $midCount;
-			$rotatedM = rotate($midRNumber,$midCount); //change number
+		/*
+		The middle rotor will rotate when:
+			1. The right rotor's notch is set
+			2. The left rotor's notch is set
+		This is because both notches allow the
+		pawl to push the middle rotor up.
+		It is called double-stepping.
+		More information here: http://users.telenet.be/d.rijmenants/en/enigmatech.htm
+		This video illustrates this event: https://www.youtube.com/watch?v=hcVhQeZ5gI4
+		*/
+
+		if($leftRotated){
+			$rotatedM = rotate($midRNumber, $midCount);
 			$midR = $rotatedM[0];
 			$midRR = $rotatedM[1];
-	//		echo "mid rotor rotated\n";
+			$leftRotated = false;
+//			echo "mid rotated 2\n";
+		}
+
+		if($rightR[0] == $rightNotch || $midR[0] == $midNotch){
+			if($midR[0] == $midNotch){
+				$leftCount++;
+				$rotatedL = rotate($leftRNumber, $leftCount);
+				$leftR = $rotatedL[0];
+				$leftRR = $rotatedL[1];
+//				echo "left rotor rotated\n";
+				$leftRotated = true;
+			}
+			$midCount++;
+			$rotatedM = rotate($midRNumber,$midCount);
+			$midR = $rotatedM[0];
+			$midRR = $rotatedM[1];
+//			echo "mid rotor rotated\n";
 		}
 
 		//Rotate the right rotor
-//		echo "R: ".$rightR."\n";
-//		echo "M: ".$midR."\n";
-//		echo "L: ".$leftR."\n";
-
-//		echo $rightR."\n";
-//		$rightRNumber = 
-
-
-//		echo $rightRNumber." ".$midRNumber." ".$leftRNumber;
-
-//		echo "\n";
-
-		$rotatedR = rotate($rightRNumber,$i+1); //change number
+		$rotatedR = rotate($rightRNumber,$i+1);
 		$rightR = $rotatedR[0];
 		$rightRR = $rotatedR[1];
-
-//		print_r($midR);
-
 
 		$r = [$leftR, $midR, $rightR];
 		$rr = [$leftRR, $midRR, $rightRR];
 
-//		print_r($r);
+		echo $verbose ? $char."->" : "";
 
-//		echo"r: ".print_r($r);
-//		echo":rr: ".print_r($rr);
+		/*
+		Pass the current char to all rotors,
+		the plugboard, and the rotors reversed
 
-//		print_r(reverse($rotors));
-		$char = $str[$i];
+		E.g.:
+		R3 -> R2 -> R1 -> Reflector -> RR1 -> RR2 -> RR3 (RR = reversed rotor)
 
-		//r3 -> r2 -> r1 -> reflector -> rr1 -> rr2 -> rr3 (rr = reversed rotor)
+		*/
 
-
-
-		$full_rotate_arr = array_merge(array_reverse($r), [$reflector], $rr);
-
-//		print_r($full_rotate_arr);
-//		echo sprintf("%02d",$i).":".$midCount." ".$char."->";
 		$char = pass_to_rotor($char, $rightR);
-
 		$char = $e_wheel[(array_search($char,str_split($e_wheel)) - ($i+1))%26];
-//		echo $char."->";
+		echo $verbose ? $char."->" : "";
+
 		$char = pass_to_rotor($char, $midR);
-		$char = $e_wheel[array_search($char,str_split($e_wheel)) - ($midCount)];
-//		echo $i." ".$midCount."\n";
-//		echo $char."->";
+		$char = $e_wheel[(array_search($char,str_split($e_wheel)) - $midCount) % 26];
+		echo $verbose ? $char."->" : "";
+
 		$char = pass_to_rotor($char, $leftR);
-//		echo $char."->";
+		$char = $e_wheel[(array_search($char,str_split($e_wheel)) - $leftCount) % 26];
+		echo $verbose ? $char."->" : "";
 
 		$char = pass_to_rotor($char, $reflector);
-//		echo $char."->";
+		echo $verbose ? $char."->" : "";
 
 		$char = pass_to_rotor($char, $leftRR);
-//		echo $char."->";
-		$char = pass_to_rotor($char, $midRR);
-		$char = $e_wheel[array_search($char,str_split($e_wheel)) - ($midCount)];
+		$char = $e_wheel[(array_search($char,str_split($e_wheel)) - $leftCount) % 26];
+		echo $verbose ? $char."->" : "";
 
-//		echo $char."->";
+		$char = pass_to_rotor($char, $midRR);
+		$char = $e_wheel[(array_search($char,str_split($e_wheel)) - $midCount) % 26];
+
+		echo $verbose ? $char."->" : "";
 		$char = pass_to_rotor($char, $rightRR);
 		$char = $e_wheel[(array_search($char,str_split($e_wheel)) - ($i+1))%26];
 		$ret .= $char;
+		echo $verbose ? $char."\n" : "";
 
-		if($str[$i] == " "){
-			echo " ";
-			continue;
-		}
 	}
 	return $ret;
 }
 
+/*
+Pass the string to the plugboard, all rotors, reflector,
+all rotors (reversed) and plugboard again.
+*/
 function enigma($string, $rotors, $reflector, $plugboard){
 	$rotors = str_split($rotors);
 	$string = plugboard($string, $plugboard);
@@ -278,13 +291,19 @@ function enigma($string, $rotors, $reflector, $plugboard){
 
 # ================
 
+
+
 //TODO: Starting positions of each rotor (left to right)
-$starting_positions = "AAA";
+$starting_positions = "AAB";
 
 //Max 13 pairs
-$plugboard = "ML SU KJ NH YT GB VF RE DC";
+$plugboard = "";
 
-//$string = parse("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+$verbose = 0;
+
+if(count($argv) == 1)
+	die("Usage: {$argv[0]} <string>");
+
 $string = parse($argv[1]);
 
-echo enigma($string, 321, $rfB, $plugboard);
+echo enigma($string, 123, $rfB, $plugboard);
